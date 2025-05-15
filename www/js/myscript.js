@@ -2070,6 +2070,8 @@ async function getcpls(type) {
 }
 
 async function fetchAllReports(start, end) {
+
+    const loader = $(".loader");
     loader.show();
 
     const endpoints = [
@@ -2109,6 +2111,7 @@ async function fetchExpenseReportcomb(start1, end1, start2, end2) {
     try {
         // Fetch data for the first date range
         const responses1 = await fetchAllReports(start2, end2);
+
         const datamain1 = {
             data1: responses1[0],
             data2: responses1[1],
@@ -2125,8 +2128,8 @@ async function fetchExpenseReportcomb(start1, end1, start2, end2) {
             data3: responses2[2],
             data4: responses2[3],
         };
-        console.log("datamain2:", datamain2);
-
+        console.log("datamain2:", datamain2);        
+    
         // Generate the combined table
         generateCombinedTable(start2, end2, datamain1, datamain2);
     } catch (error) {
@@ -3697,7 +3700,7 @@ function generateDateRanges(start2, end2) {
 }
 
 function generateReport() {
-    console.log("generateReport called");
+    // console.log("generateReport called");
     var start2 = $("#reportStartDate").val(); // Get the value of the input
     var end2 = $("#reportEndDate").val(); // Get the value of the input
 
@@ -3706,7 +3709,7 @@ function generateReport() {
     if (start2 && end2) {
         // Generate date ranges using the retrieved dates
         const { start1, end1 } = generateDateRanges(start2, end2);
-        console.log(start1, end1, start2, end2);
+        // console.log(start1, end1, start2, end2);
         // Call test23 with the returned dates
         fetchExpenseReportcomb(start1, end1, start2, end2);
     } else {
