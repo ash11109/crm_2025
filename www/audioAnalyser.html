@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sales Call Analyzer</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 30px;
+      background: #f9f9f9;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    .file-input-container {
+      margin: 20px 0;
+    }
+    .file-info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #e9ecef;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      margin: 20px auto;
+      border: 4px solid #ccc;
+      border-top: 4px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .score {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    .score h3 {
+      margin: 0 0 5px;
+      font-size: 18px;
+    }
+    .score p {
+      margin: 0;
+    }
+    #overall {
+      font-weight: bold;
+      font-size: 20px;
+      margin: 20px 0 10px;
+    }
+    #results {
+      margin-top: 30px;
+    }
+    .error {
+      color: #dc3545;
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      white-space: pre-wrap;
+    }
+    .success {
+      color: #155724;
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .debug {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Sales Call Analyzer</h1>
+  <p>Select a call recording to analyze speaker performance using AI.</p>
+  
+  <div class="file-input-container">
+    <input type="file" id="fileInput" accept="audio/*,video/*" />
+    <div id="fileInfo" class="file-info" style="display: none;"></div>
+  </div>
+  
+  <button id="analyzeBtn" disabled>Analyze</button>
+
+  <div id="spinner" class="spinner" style="display: none;"></div>
+  <div id="status"></div>
+  <div id="errorMessage" class="error" style="display: none;"></div>
+  <div id="debugInfo" class="debug" style="display: none;"></div>
+
+  <div id="results" style="display: none;">
+    <div id="overall"></div>
+    <div id="scoreCards"></div>
+    <button id="resetBtn">Analyze Another Call</button>
+  </div>
+
+  <script>
+    const TRANSCRIBE_URL = 'https://sttsarvam.onrender.com/transcribe';
+    const GEMINI_API_KEY = 'AIzaSyBDHAtCgKffA2YurDUpwkH-Nvr19HJF3DQ';
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const spinner = document.getElementById('spinner');
+    const status = document.getElementById('status');
+    const errorMessage = document.getElementById('errorMessage');
+    const debugInfo = document.getElementById('debugInfo');
+    const results = document.getElementById('results');
+    const overall = document.getElementById('overall');
+    const scoreCards = document.getElementById('scoreCards');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // File input handler
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        fileInfo.innerHTML = `
+          <strong>Selected file:</strong> ${file.name}<br>
+          <strong>Size:</strong> ${sizeMB} MB<br>
+          <strong>Type:</strong> ${file.type}
+        `;
+        fileInfo.style.display = 'block';
+        analyzeBtn.disabled = false;
+      } else {
+        fileInfo.style.display = 'none';
+        analyzeBtn.disabled = true;
+      }
+    });
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      spinner.style.display = 'none';
+      status.textContent = '';
+    }
+
+    function showDebug(info) {
+      debugInfo.textContent = JSON.stringify(info, null, 2);
+      debugInfo.style.display = 'block';
+    }
+
+    function hideError() {
+      errorMessage.style.display = 'none';
+      debugInfo.style.display = 'none';
+    }
+
+    analyzeBtn.onclick = async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        showError('Please select an audio file first.');
+        return;
+      }
+
+      hideError();
+      spinner.style.display = 'block';
+      status.textContent = 'Uploading to transcription service...';
+      results.style.display = 'none';
+
+      try {
+      
+        const formData = new FormData();
+        formData.append('files', file); 
+
+        console.log('Uploading to:', TRANSCRIBE_URL);
+        console.log('File:', file.name, file.size, file.type);
+
+        const transcribeRes = await fetch(TRANSCRIBE_URL, {
+          method: 'POST',
+          body: formData
+        });
+
+        console.log('Response status:', transcribeRes.status);
+        
+        if (!transcribeRes.ok) {
+          const errorText = await transcribeRes.text();
+          console.error('Error response:', errorText);
+          throw new Error(`Server error ${transcribeRes.status}: ${errorText}`);
+        }
+
+        status.textContent = 'Processing transcription...';
+        const transcribeData = await transcribeRes.json();
+        console.log('Transcription response:', transcribeData);
+        showDebug(transcribeData);
+
+        if (!transcribeData.results || transcribeData.results.length === 0) {
+          throw new Error('No transcription results returned');
+        }
+
+        const firstResult = transcribeData.results[0];
+        let transcript = '';
+
+
+        if (firstResult.transcription) {
+          if (typeof firstResult.transcription === 'string') {
+            transcript = firstResult.transcription;
+          } else if (firstResult.transcription.transcript) {
+            transcript = firstResult.transcription.transcript;
+          } else if (firstResult.transcription.text) {
+            transcript = firstResult.transcription.text;
+          } else {
+
+            transcript = JSON.stringify(firstResult.transcription);
+          }
+        }
+
+        if (!transcript || transcript.length < 10) {
+          throw new Error('Invalid or empty transcript received');
+        }
+
+        status.textContent = 'Analyzing with AI...';
+
+
+        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. Return ONLY valid JSON:
+
+{
+  "engagement": {"score": 15, "comment": "Brief comment"},
+  "clarity": {"score": 18, "comment": "Brief comment"}, 
+  "product_knowledge": {"score": 12, "comment": "Brief comment"},
+  "listening_skills": {"score": 16, "comment": "Brief comment"},
+  "handling_objections": {"score": 14, "comment": "Brief comment"},
+  "closing_techniques": {"score": 13, "comment": "Brief comment"}
+}
+
+Transcript: ${transcript.substring(0, 2000)}`;
+
+        const geminiRes = await fetch(GEMINI_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        if (!geminiRes.ok) {
+          throw new Error(`Gemini API failed: ${geminiRes.status}`);
+        }
+        
+        const geminiJson = await geminiRes.json();
+        let content = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!content) {
+          throw new Error('No response from Gemini');
+        }
+
+        content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const analysis = JSON.parse(content);
+
+        showResults(analysis);
+
+      } catch (err) {
+        console.error('Full error:', err);
+        showError(`Error: ${err.message}`);
+      }
+    };
+
+    function showResults(data) {
+      spinner.style.display = 'none';
+      status.textContent = '';
+      results.style.display = 'block';
+
+      const keys = Object.keys(data);
+      const scores = keys.map(k => data[k]?.score || 0);
+      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / keys.length);
+
+      overall.textContent = `Overall Score: ${avg}/20`;
+
+      scoreCards.innerHTML = keys.map(k => {
+        const title = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return `
+          <div class="score">
+            <h3>${title}: ${data[k]?.score || 0}/20</h3>
+            <p>${data[k]?.comment || 'No comment'}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    resetBtn.onclick = () => {
+      fileInput.value = '';
+      fileInfo.style.display = 'none';
+      analyzeBtn.disabled = true;
+      spinner.style.display = 'none';
+      status.textContent = '';
+      results.style.display = 'none';
+      scoreCards.innerHTML = '';
+      overall.textContent = '';
+      hideError();
+    };
+  </script>
+
+</body>
+</html>
