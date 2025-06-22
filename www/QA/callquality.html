@@ -255,7 +255,7 @@
             try {
                 const obj = JSON.parse(jsonString);
                 if (typeof obj === 'object' && obj !== null && 'score' in obj) {
-                return obj;
+                    return obj;
                 }
                 return { score: 0, comment: 'Invalid format' };
             } catch {
@@ -264,30 +264,35 @@
         }
 
         const checkRes = await fetch(`${CHECK_DB_URL}?audiolink=${encodeURIComponent(audioUrl)}`);
-        
+
         if (!checkRes.ok) {
-          throw new Error(`Database check failed: ${checkRes.status}`);
+            throw new Error(`Database check failed: ${checkRes.status}`);
         }
 
         const checkData = await checkRes.text();
         console.log('Database check response:', checkData);
 
-        // If response is "PENDING", show pending message
-        if (checkData.trim() === '"PENDING"' || checkData.trim() === 'PENDING') {
-        // No record in DB — proceed with transcription + analysis
-        console.log('No record found in DB, proceeding with transcription...');
-        } else {
-        // Try to parse as existing result
-        let existingData;
+        // Parse the response
+        let parsedResponse;
         try {
-            existingData = JSON.parse(checkData);
+            parsedResponse = JSON.parse(checkData);
         } catch (e) {
-            existingData = null;
+            throw new Error('Invalid response from database check');
         }
 
-        if (existingData && Array.isArray(existingData) && existingData.length > 0 && existingData[0].Status !== 'PENDING') {
+        // Handle different response types
+        if (parsedResponse === "NOT_FOUND") {
+            // No record in DB — proceed with transcription + analysis
+            console.log('No record found in DB, proceeding with transcription...');
+            status.textContent = 'No existing analysis found. Starting transcription...';
+        } else if (parsedResponse === "PENDING") {
+            // Record exists but is pending — proceed with transcription + analysis
+            console.log('Record is pending, proceeding with transcription...');
+            status.textContent = 'Found pending record. Starting transcription...';
+        } else if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
+            // We have existing completed data, use it
             status.textContent = 'Found existing analysis in database!';
-            const dbRecord = existingData[0];
+            const dbRecord = parsedResponse[0];
             
             const analysisData = {
                 engagement: parseSafe(dbRecord.Call_Opening),
@@ -297,40 +302,11 @@
                 handling_objections: parseSafe(dbRecord.Communication_Skill),
                 closing_techniques: parseSafe(dbRecord.Closing_Skill)
             };
-
             
             showResults(analysisData);
             return;
-        }
-        }
-
-
-        // Try to parse as JSON (existing completed analysis)
-        let existingData;
-        try {
-          existingData = JSON.parse(checkData);
-        } catch (e) {
-          existingData = null;
-        }
-
-        // If we have existing completed data, use it
-        if (existingData && Array.isArray(existingData) && existingData.length > 0 && existingData[0].Status !== 'PENDING') {
-          status.textContent = 'Found existing analysis in database!';
-          const dbRecord = existingData[0];
-          
-          // Convert database format to our analysis format
-          const analysisData = {
-            engagement: parseSafe(dbRecord.Call_Opening),
-            clarity: parseSafe(dbRecord.Speech_Clarity),
-            product_knowledge: parseSafe(dbRecord.Product_Knowledge),
-            listening_skills: parseSafe(dbRecord.Call_Control),
-            handling_objections: parseSafe(dbRecord.Communication_Skill),
-            closing_techniques: parseSafe(dbRecord.Closing_Skill)
-        };
-
-          
-          showResults(analysisData);
-          return;
+        } else {
+            throw new Error('Unexpected response format from database');
         }
 
         // No existing data, proceed with API calls
