@@ -5,37 +5,56 @@
   <title>Sales Call Analyzer</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       padding: 30px;
-      background: #f9f9f9;
+      background: #f4f6f8;
+      color: #212529;
     }
+
     h1 {
-      font-size: 28px;
-      margin-bottom: 10px;
+      font-size: 32px;
+      margin-bottom: 20px;
+      color: #333;
     }
-    input, button {
-      padding: 10px;
+
+    input,
+    button {
+      padding: 12px 16px;
       margin: 10px 0;
       font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+      transition: all 0.2s ease;
     }
+
+    input:focus,
+    button:hover {
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    }
+
     .url-input-container {
-      margin: 20px 0;
+      margin: 30px 0;
     }
+
     .url-input {
       width: 100%;
       max-width: 600px;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 5px;
-      font-size: 14px;
+      padding: 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 15px;
     }
+
     .url-info {
-      margin: 10px 0;
-      padding: 10px;
-      background: #e9ecef;
-      border-radius: 5px;
+      margin-top: 12px;
+      padding: 12px;
+      background: #eef2f5;
+      border-radius: 6px;
       font-size: 14px;
     }
+
     .spinner {
       width: 40px;
       height: 40px;
@@ -45,57 +64,76 @@
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     .score {
-      border: 1px solid #ccc;
+      border: 1px solid #ddd;
       border-radius: 10px;
-      background: #fff;
-      padding: 15px;
-      margin: 10px 0;
+      background: #ffffff;
+      padding: 16px;
+      margin: 12px 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
+
     .score h3 {
-      margin: 0 0 5px;
+      margin: 0 0 6px;
       font-size: 18px;
+      color: #333;
     }
+
     .score p {
       margin: 0;
+      color: #555;
     }
+
     #overall {
-      font-weight: bold;
-      font-size: 20px;
-      margin: 20px 0 10px;
+      font-weight: 600;
+      font-size: 22px;
+      margin: 24px 0 12px;
+      color: #007bff;
     }
+
     #results {
-      margin-top: 30px;
+      margin-top: 40px;
     }
+
+    .error,
+    .success,
+    .debug,
+    .auto-detected {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 12px 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
     .error {
-      color: #dc3545;
+      color: #721c24;
       background: #f8d7da;
       border: 1px solid #f5c6cb;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px 0;
-      white-space: pre-wrap;
     }
+
     .success {
       color: #155724;
       background: #d4edda;
       border: 1px solid #c3e6cb;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px 0;
     }
+
     .debug {
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px 0;
+      background: #f1f3f5;
+      border: 1px solid #ced4da;
       font-family: monospace;
-      font-size: 12px;
-      max-height: 200px;
+      font-size: 13px;
+      max-height: 250px;
       overflow-y: auto;
     }
+
     .auto-detected {
       background: #d1ecf1;
       border: 1px solid #bee5eb;
@@ -421,7 +459,9 @@ Transcript: ${transcript.substring(0, 2000)}`;
     async function saveToDatabase(audioUrl, transcript, analysis) {
         try {
             const saveData = {
+            cs_id: 2,
             audiolink: audioUrl,
+            file_url: audioUrl,
             transcription: transcript,
             call_opening: analysis.engagement || {},
             speech_clarity: analysis.clarity || {},
