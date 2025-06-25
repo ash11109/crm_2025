@@ -35,16 +35,21 @@
     }
 
     .url-input-container {
-      margin: 30px 0;
+      margin: 0 0;
+      display: none;
     }
 
     .url-input {
+      visibility: hidden;
       width: 100%;
       max-width: 600px;
       padding: 14px;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: 15px;
+      position: absolute;
+      top: 0;
+      z-index: -100;
     }
 
     .url-info {
@@ -71,24 +76,69 @@
       }
     }
 
-    .score {
-      border: 1px solid #ddd;
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: white;
       border-radius: 10px;
-      background: #ffffff;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .results-table th {
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
       padding: 16px;
-      margin: 12px 0;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      text-align: left;
+      font-weight: 600;
+      font-size: 16px;
     }
 
-    .score h3 {
-      margin: 0 0 6px;
-      font-size: 18px;
+    .results-table td {
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+      vertical-align: top;
+    }
+
+    .results-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .results-table tr:nth-child(even) {
+      background: #f8f9fa;
+      background: rgba(0, 123, 255, 0.05);
+    }
+
+    .category-cell {
+      font-weight: 600;
       color: #333;
+      width: 200px;
     }
 
-    .score p {
-      margin: 0;
+    .score-cell {
+      font-weight: 700;
+      font-size: 18px;
+      color: #007bff;
+      text-align: center;
+      width: 100px;
+    }
+
+    .comment-cell {
       color: #555;
+      line-height: 1.5;
+    }
+
+    .score-high {
+      color: #28a745;
+    }
+
+    .score-medium {
+      color: #ffc107;
+    }
+
+    .score-low {
+      color: #dc3545;
     }
 
     #overall {
@@ -197,7 +247,7 @@
       let source = 'URL parameter';
       
       // Fallback to localStorage if no URL parameter
-      if (!audiolink && localStorage.getItem('AI_QA_link')) {
+      if (!audiolink && window.localStorage && localStorage.getItem('AI_QA_link')) {
         audiolink = localStorage.getItem('AI_QA_link');
         type = localStorage.getItem('AI_QA_Intrested_IN');
         id = localStorage.getItem('AI_QA_CS_ID');
@@ -222,6 +272,11 @@
         
         // Store these values for later use in analysis
         window.qaData = { audiolink, type, id };
+        
+        // Auto-click the analyze button after a short delay
+        setTimeout(() => {
+          analyzeBtn.click();
+        }, 500);
       }
     });
 
@@ -411,12 +466,12 @@
         const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. Return ONLY valid JSON:
 
 {
-  "engagement": {"score": 15, "comment": "Brief comment"},
-  "clarity": {"score": 18, "comment": "Brief comment"}, 
-  "product_knowledge": {"score": 12, "comment": "Brief comment"},
-  "listening_skills": {"score": 16, "comment": "Brief comment"},
-  "handling_objections": {"score": 14, "comment": "Brief comment"},
-  "closing_techniques": {"score": 13, "comment": "Brief comment"}
+  "engagement": {"score": 15, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
+  "clarity": {"score": 18, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"}, 
+  "product_knowledge": {"score": 12, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
+  "listening_skills": {"score": 16, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
+  "handling_objections": {"score": 14, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
+  "closing_techniques": {"score": 13, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"}
 }
 
 Transcript: ${transcript.substring(0, 2000)}`;
@@ -502,15 +557,41 @@ Transcript: ${transcript.substring(0, 2000)}`;
 
       overall.textContent = `Overall Score: ${avg}/20`;
 
-      scoreCards.innerHTML = keys.map(k => {
-        const title = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        return `
-          <div class="score">
-            <h3>${title}: ${data[k]?.score || 0}/20</h3>
-            <p>${data[k]?.comment || 'No comment'}</p>
-          </div>
-        `;
-      }).join('');
+      // Function to get score class based on score value
+      function getScoreClass(score) {
+        if (score >= 15) return 'score-high';
+        if (score >= 10) return 'score-medium';
+        return 'score-low';
+      }
+
+      // Create table with results
+      scoreCards.innerHTML = `
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Score</th>
+              <th>Comments</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${keys.map(k => {
+              const title = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+              const score = data[k]?.score || 0;
+              const comment = data[k]?.comment || 'No comment';
+              const scoreClass = getScoreClass(score);
+              
+              return `
+                <tr>
+                  <td class="category-cell">${title}</td>
+                  <td class="score-cell ${scoreClass}">${score}/20</td>
+                  <td class="comment-cell">${comment}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
     resetBtn.onclick = () => {
