@@ -129,6 +129,52 @@
       line-height: 1.5;
     }
 
+    .detailed-analysis {
+      margin-top: 10px;
+    }
+
+    .analysis-section {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+    }
+
+    .analysis-section h4 {
+      margin: 0 0 8px 0;
+      color: #007bff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .analysis-content {
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .original-text {
+      background: #ffe6e6;
+      padding: 5px 8px;
+      border-radius: 3px;
+      margin: 5px 0;
+      font-style: italic;
+    }
+
+    .issue-text {
+      background: #fff3cd;
+      padding: 5px 8px;
+      border-radius: 3px;
+      margin: 5px 0;
+    }
+
+    .suggestion-text {
+      background: #d4edda;
+      padding: 5px 8px;
+      border-radius: 3px;
+      margin: 5px 0;
+    }
+
     .score-high {
       color: #28a745;
     }
@@ -337,6 +383,30 @@
       debugInfo.style.display = 'none';
     }
 
+    // Function to parse database records with detailed analysis
+    function parseDetailedAnalysis(jsonString) {
+      try {
+        const obj = JSON.parse(jsonString);
+        if (typeof obj === 'object' && obj !== null) {
+          // Handle both old format (simple) and new format (detailed)
+          if ('score' in obj && 'comment' in obj && !('detailed_analysis' in obj)) {
+            // Old format - convert to new format
+            return {
+              score: obj.score || 0,
+              comment: obj.comment || 'No comment',
+              detailed_analysis: []
+            };
+          } else if ('score' in obj && 'detailed_analysis' in obj) {
+            // New detailed format
+            return obj;
+          }
+        }
+        return { score: 0, comment: 'Invalid format', detailed_analysis: [] };
+      } catch {
+        return { score: 0, comment: 'Not JSON', detailed_analysis: [] };
+      }
+    }
+
     analyzeBtn.onclick = async () => {
       const audioUrl = urlInput.value.trim();
       if (!audioUrl || !isValidUrl(audioUrl)) {
@@ -351,18 +421,6 @@
 
       try {
         // First, check if analysis already exists in database
-        function parseSafe(jsonString) {
-            try {
-                const obj = JSON.parse(jsonString);
-                if (typeof obj === 'object' && obj !== null && 'score' in obj) {
-                    return obj;
-                }
-                return { score: 0, comment: 'Invalid format' };
-            } catch {
-                return { score: 0, comment: 'Not JSON' };
-            }
-        }
-
         const checkRes = await fetch(`${CHECK_DB_URL}?audiolink=${encodeURIComponent(audioUrl)}`);
 
         if (!checkRes.ok) {
@@ -395,12 +453,12 @@
             const dbRecord = parsedResponse[0];
             
             const analysisData = {
-                engagement: parseSafe(dbRecord.Call_Opening),
-                clarity: parseSafe(dbRecord.Speech_Clarity),
-                product_knowledge: parseSafe(dbRecord.Product_Knowledge),
-                listening_skills: parseSafe(dbRecord.Call_Control),
-                handling_objections: parseSafe(dbRecord.Communication_Skill),
-                closing_techniques: parseSafe(dbRecord.Closing_Skill)
+                engagement: parseDetailedAnalysis(dbRecord.Call_Opening),
+                clarity: parseDetailedAnalysis(dbRecord.Speech_Clarity),
+                product_knowledge: parseDetailedAnalysis(dbRecord.Product_Knowledge),
+                listening_skills: parseDetailedAnalysis(dbRecord.Call_Control),
+                handling_objections: parseDetailedAnalysis(dbRecord.Communication_Skill),
+                closing_techniques: parseDetailedAnalysis(dbRecord.Closing_Skill)
             };
             
             showResults(analysisData);
@@ -469,19 +527,71 @@
 
         status.textContent = 'Analyzing with AI...';
 
-        // Simple prompt for Gemini
-        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. Return ONLY valid JSON:
+        // Enhanced prompt for detailed analysis
+        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. For clarity analysis, provide specific examples from the transcript with detailed breakdown. Return ONLY valid JSON in this exact format:
 
 {
-  "engagement": {"score": 15, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
-  "clarity": {"score": 18, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"}, 
-  "product_knowledge": {"score": 12, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
-  "listening_skills": {"score": 16, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
-  "handling_objections": {"score": 14, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"},
-  "closing_techniques": {"score": 13, "comment": "comment at least 3 lines in hinglish with a stronger emphasis on hindi words written in english"}
+  "engagement": {
+    "score": 15, 
+    "comment": "comment at least 3 lines in hinglish",
+    "detailed_analysis": []
+  },
+  "clarity": {
+    "score": 18, 
+    "comment": "comment at least 3 lines in hinglish",
+    "detailed_analysis": [
+      {
+        "category": "Technical Terms",
+        "original": "exact quote from transcript where technical terms were used",
+        "issue": "what's wrong with how it was said",
+        "suggestion": "how it could be better explained in hinglish"
+      },
+      {
+        "category": "Course Benefits", 
+        "original": "exact quote about course benefits",
+        "issue": "what's unclear about the statement",
+        "suggestion": "clearer way to explain the benefits"
+      },
+      {
+        "category": "Job Opportunities",
+        "original": "exact quote about job prospects", 
+        "issue": "what's vague about the statement",
+        "suggestion": "more specific way to explain job opportunities"
+      }
+    ]
+  },
+  "product_knowledge": {
+    "score": 12, 
+    "comment": "comment at least 3 lines in hinglish",
+    "detailed_analysis": []
+  },
+  "listening_skills": {
+    "score": 16, 
+    "comment": "comment at least 3 lines in hinglish", 
+    "detailed_analysis": []
+  },
+  "handling_objections": {
+    "score": 14, 
+    "comment": "comment at least 3 lines in hinglish",
+    "detailed_analysis": []
+  },
+  "closing_techniques": {
+    "score": 13, 
+    "comment": "comment at least 3 lines in hinglish",
+    "detailed_analysis": []
+  }
 }
 
-Transcript: ${transcript.substring(0, 2000)}`;
+For clarity analysis, identify at least 3-5 specific instances where the speaker could have been clearer. Focus on:
+1. Technical terms that weren't explained properly
+2. Vague statements about course benefits
+3. Unclear job opportunity descriptions
+4. Course structure explanations that lacked context
+5. Internship/placement information that was confusing
+
+Each detailed_analysis item should have exact quotes from the transcript.
+
+Transcript: ${transcript.substring(0, 3000)}`;
 
         const geminiRes = await fetch(GEMINI_URL, {
           method: 'POST',
@@ -552,6 +662,22 @@ Transcript: ${transcript.substring(0, 2000)}`;
         }
     }
 
+    function renderDetailedAnalysis(detailedAnalysis) {
+      if (!detailedAnalysis || detailedAnalysis.length === 0) {
+        return '';
+      }
+      
+      return detailedAnalysis.map(item => `
+        <div class="analysis-section">
+          <h4>${item.category}:</h4>
+          <div class="analysis-content">
+            <div class="original-text"><strong>Original:</strong> "${item.original}"</div>
+            <div class="issue-text"><strong>Issue:</strong> ${item.issue}</div>
+            <div class="suggestion-text"><strong>Suggestion:</strong> ${item.suggestion}</div>
+          </div>
+        </div>
+      `).join('');
+    }
 
     function showResults(data) {
       spinner.style.display = 'none';
@@ -580,7 +706,7 @@ Transcript: ${transcript.substring(0, 2000)}`;
             <tr>
               <th>Category</th>
               <th>Score</th>
-              <th>Comments</th>
+              <th>Comments & Analysis</th>
             </tr>
           </thead>
           <tbody>
@@ -588,13 +714,21 @@ Transcript: ${transcript.substring(0, 2000)}`;
               const title = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
               const score = data[k]?.score || 0;
               const comment = data[k]?.comment || 'No comment';
+              const detailedAnalysis = data[k]?.detailed_analysis || [];
               const scoreClass = getScoreClass(score);
               
               return `
                 <tr>
                   <td class="category-cell">${title}</td>
                   <td class="score-cell ${scoreClass}">${score}/20</td>
-                  <td class="comment-cell">${comment}</td>
+                  <td class="comment-cell">
+                    <div>${comment}</div>
+                    ${detailedAnalysis.length > 0 ? `
+                      <div class="detailed-analysis">
+                        ${renderDetailedAnalysis(detailedAnalysis)}
+                      </div>
+                    ` : ''}
+                  </td>
                 </tr>
               `;
             }).join('')}
