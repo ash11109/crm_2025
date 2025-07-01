@@ -235,12 +235,54 @@
       border: 1px solid #bee5eb;
       color: #0c5460;
     }
+
+    /* New styles for dropdown functionality */
+    .toggle-details {
+      color: #007bff;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 8px;
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(0, 123, 255, 0.1);
+    }
+
+    .toggle-details:hover {
+      background: rgba(0, 123, 255, 0.2);
+    }
+
+    .toggle-details::after {
+      content: " ▼";
+      font-size: 10px;
+    }
+
+    .toggle-details.expanded::after {
+      content: " ▲";
+    }
+
+    .subcategories-container {
+      display: none;
+      margin-top: 10px;
+      padding-left: 10px;
+      border-left: 2px solid #eee;
+    }
+
+    .subcategory-item {
+      margin-bottom: 15px;
+    }
+
+    .subcategory-title {
+      font-weight: 600;
+      color: #007bff;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
 
   <h1>Sales Call Analyzer</h1>
-  <p>Enter an audio URL or use the URL parameter to analyze speaker performance using AI.</p>
   
   <div class="url-input-container">
     <input type="url" id="urlInput" class="url-input" placeholder="Enter audio file URL here..." />
@@ -499,7 +541,7 @@
         console.log('Transcription response:', transcribeData);
         showDebug(transcribeData);
 
-        // Extract transcript from your API response structure
+        // Extract transcript from API response structure
         if (!transcribeData.results || transcribeData.results.length === 0) {
           throw new Error('No transcription results returned');
         }
@@ -527,14 +569,39 @@
 
         status.textContent = 'Analyzing with AI...';
 
-        // Enhanced prompt for detailed analysis
-        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. For clarity analysis, provide specific examples from the transcript with detailed breakdown. Return ONLY valid JSON in this exact format:
+        // Enhanced prompt for detailed analysis across all categories
+        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. For ALL categories, provide specific examples from the transcript with detailed breakdown. Return ONLY valid JSON in this exact format:
 
 {
   "engagement": {
     "score": 15, 
     "comment": "comment at least 3 lines in hinglish",
-    "detailed_analysis": []
+    "detailed_analysis": [
+      {
+        "category": "Opening Hook",
+        "original": "exact quote from transcript showing the opening",
+        "issue": "what could be improved in the opening",
+        "suggestion": "better opening approach in hinglish"
+      },
+      {
+        "category": "Energy Level", 
+        "original": "exact quote showing energy/enthusiasm",
+        "issue": "what's lacking in energy or enthusiasm",
+        "suggestion": "how to show more energy and engagement"
+      },
+      {
+        "category": "Rapport Building",
+        "original": "exact quote showing attempt to build rapport",
+        "issue": "what was missing in building connection",
+        "suggestion": "better way to connect with customer"
+      },
+      {
+        "category": "Maintaining Interest",
+        "original": "exact quote where speaker tried to keep customer engaged",
+        "issue": "how engagement could be improved",
+        "suggestion": "better techniques to maintain customer interest"
+      }
+    ]
   },
   "clarity": {
     "score": 18, 
@@ -554,44 +621,152 @@
       },
       {
         "category": "Job Opportunities",
-        "original": "exact quote about job prospects", 
+        "original": "exact quote about job prospects",
         "issue": "what's vague about the statement",
         "suggestion": "more specific way to explain job opportunities"
+      },
+      {
+        "category": "Course Structure",
+        "original": "exact quote about course timeline or structure",
+        "issue": "what information was confusing or missing",
+        "suggestion": "clearer way to explain course structure"
       }
     ]
   },
   "product_knowledge": {
     "score": 12, 
     "comment": "comment at least 3 lines in hinglish",
-    "detailed_analysis": []
+    "detailed_analysis": [
+      {
+        "category": "Course Details",
+        "original": "exact quote about course curriculum or structure",
+        "issue": "what information was missing or incorrect",
+        "suggestion": "more comprehensive way to explain course details"
+      },
+      {
+        "category": "Industry Knowledge",
+        "original": "exact quote showing industry understanding",
+        "issue": "what industry knowledge was lacking",
+        "suggestion": "better way to demonstrate industry expertise"
+      },
+      {
+        "category": "Competitor Awareness",
+        "original": "exact quote about competitors or market comparison",
+        "issue": "what competitive knowledge was missing",
+        "suggestion": "better way to position against competitors"
+      },
+      {
+        "category": "Success Stories",
+        "original": "exact quote about student success or testimonials",
+        "issue": "what was lacking in success story presentation",
+        "suggestion": "more compelling way to share success stories"
+      }
+    ]
   },
   "listening_skills": {
     "score": 16, 
-    "comment": "comment at least 3 lines in hinglish", 
-    "detailed_analysis": []
+    "comment": "comment at least 3 lines in hinglish",
+    "detailed_analysis": [
+      {
+        "category": "Understanding Customer Needs",
+        "original": "exact quote where customer expressed needs",
+        "issue": "how the speaker failed to address or acknowledge needs",
+        "suggestion": "better way to show understanding and empathy"
+      },
+      {
+        "category": "Asking Questions",
+        "original": "exact quote of questions asked by speaker",
+        "issue": "what was wrong with the questioning approach",
+        "suggestion": "better questions to understand customer better"
+      },
+      {
+        "category": "Active Listening",
+        "original": "exact quote showing speaker's response to customer input",
+        "issue": "how active listening could be improved",
+        "suggestion": "better way to show you're listening and understanding"
+      },
+      {
+        "category": "Acknowledging Concerns",
+        "original": "exact quote where customer concerns were acknowledged",
+        "issue": "what was inadequate in acknowledging concerns",
+        "suggestion": "better way to validate customer concerns"
+      }
+    ]
   },
   "handling_objections": {
     "score": 14, 
     "comment": "comment at least 3 lines in hinglish",
-    "detailed_analysis": []
+    "detailed_analysis": [
+      {
+        "category": "Price Concerns",
+        "original": "exact quote where price objection was raised and handled",
+        "issue": "what was inadequate in handling price concerns",
+        "suggestion": "better way to address pricing objections"
+      },
+      {
+        "category": "Time/Availability Issues",
+        "original": "exact quote about time or availability concerns",
+        "issue": "how the objection handling could be improved",
+        "suggestion": "more effective way to handle time-related objections"
+      },
+      {
+        "category": "Doubt Management",
+        "original": "exact quote where customer expressed doubts",
+        "issue": "what was lacking in addressing doubts",
+        "suggestion": "better approach to handle customer doubts"
+      },
+      {
+        "category": "Feature Concerns",
+        "original": "exact quote about course features or structure concerns",
+        "issue": "how feature-related objections could be better handled",
+        "suggestion": "more effective way to address feature concerns"
+      }
+    ]
   },
   "closing_techniques": {
     "score": 13, 
     "comment": "comment at least 3 lines in hinglish",
-    "detailed_analysis": []
+    "detailed_analysis": [
+      {
+        "category": "Creating Urgency",
+        "original": "exact quote where urgency was attempted",
+        "issue": "what was lacking in creating urgency",
+        "suggestion": "better way to create genuine urgency"
+      },
+      {
+        "category": "Call to Action",
+        "original": "exact quote of the final call to action",
+        "issue": "what was weak about the closing",
+        "suggestion": "stronger and clearer closing technique"
+      },
+      {
+        "category": "Overcoming Hesitation",
+        "original": "exact quote where customer hesitation was addressed",
+        "issue": "what was missing in handling hesitation",
+        "suggestion": "better way to overcome customer hesitation"
+      },
+      {
+        "category": "Next Steps",
+        "original": "exact quote about follow-up or next steps",
+        "issue": "what was unclear about next steps",
+        "suggestion": "clearer way to define next steps"
+      }
+    ]
   }
 }
 
-For clarity analysis, identify at least 3-5 specific instances where the speaker could have been clearer. Focus on:
-1. Technical terms that weren't explained properly
-2. Vague statements about course benefits
-3. Unclear job opportunity descriptions
-4. Course structure explanations that lacked context
-5. Internship/placement information that was confusing
+For each category, identify exactly 4 specific instances from the transcript. Focus on:
 
-Each detailed_analysis item should have exact quotes from the transcript.
+1. ENGAGEMENT: Opening hooks, energy level, rapport building, maintaining interest
+2. CLARITY: Technical terms, course benefits, job opportunities, course structure
+3. PRODUCT KNOWLEDGE: Course details, industry knowledge, competitor awareness, success stories
+4. LISTENING SKILLS: Understanding customer needs, asking questions, active listening, acknowledging concerns
+5. HANDLING OBJECTIONS: Price concerns, time/availability issues, doubt management, feature concerns
+6. CLOSING TECHNIQUES: Creating urgency, call to action, overcoming hesitation, next steps
 
-Transcript: ${transcript.substring(0, 3000)}`;
+Each detailed_analysis item must have exact quotes from the transcript and provide 4 subcategories for comprehensive analysis.
+
+Transcript: ${transcript.substring(0, 4000)}`;
 
         const geminiRes = await fetch(GEMINI_URL, {
           method: 'POST',
@@ -667,16 +842,22 @@ Transcript: ${transcript.substring(0, 3000)}`;
         return '';
       }
       
-      return detailedAnalysis.map(item => `
-        <div class="analysis-section">
-          <h4>${item.category}:</h4>
-          <div class="analysis-content">
-            <div class="original-text"><strong>Original:</strong> "${item.original}"</div>
-            <div class="issue-text"><strong>Issue:</strong> ${item.issue}</div>
-            <div class="suggestion-text"><strong>Suggestion:</strong> ${item.suggestion}</div>
-          </div>
+      // Create a container div for the subcategories
+      return `
+        <div class="toggle-details">Explain further</div>
+        <div class="subcategories-container">
+          ${detailedAnalysis.map(item => `
+            <div class="subcategory-item">
+              <div class="subcategory-title">${item.category}:</div>
+              <div class="analysis-content">
+                <div class="original-text"><strong>Original:</strong> "${item.original}"</div>
+                <div class="issue-text"><strong>Issue:</strong> ${item.issue}</div>
+                <div class="suggestion-text"><strong>Suggestion:</strong> ${item.suggestion}</div>
+              </div>
+            </div>
+          `).join('')}
         </div>
-      `).join('');
+      `;
     }
 
     function showResults(data) {
@@ -735,6 +916,17 @@ Transcript: ${transcript.substring(0, 3000)}`;
           </tbody>
         </table>
       `;
+
+      // Add event listeners to all toggle buttons
+      document.querySelectorAll('.toggle-details').forEach(button => {
+        button.addEventListener('click', function() {
+          const container = this.nextElementSibling;
+          const isExpanded = container.style.display === 'block';
+          
+          container.style.display = isExpanded ? 'none' : 'block';
+          this.classList.toggle('expanded', !isExpanded);
+        });
+      });
     }
 
     resetBtn.onclick = () => {
