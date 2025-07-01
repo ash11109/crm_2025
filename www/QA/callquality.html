@@ -18,7 +18,8 @@
     }
 
     input,
-    button {
+    button,
+    textarea {
       padding: 12px 16px;
       margin: 10px 0;
       font-size: 16px;
@@ -29,7 +30,8 @@
     }
 
     input:focus,
-    button:hover {
+    button:hover,
+    textarea:focus {
       border-color: #007bff;
       box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
     }
@@ -278,6 +280,38 @@
       margin-bottom: 5px;
       font-size: 13px;
     }
+
+    /* Feedback section styles */
+    .feedback-section {
+      margin-top: 40px;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .feedback-section h2 {
+      margin-top: 0;
+      color: #333;
+      font-size: 20px;
+    }
+
+    #feedbackForm {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #feedbackText {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    #feedbackStatus {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -304,12 +338,23 @@
 
   <div id="debugInfo" class="debug" style="display: none;"></div>
 
+  <!-- New Feedback Section -->
+  <div class="feedback-section">
+    <h2>Feedback</h2>
+    <form id="feedbackForm">
+      <textarea id="feedbackText" placeholder="Please share your feedback about this tool..."></textarea>
+      <button type="submit" id="submitFeedbackBtn">Submit Feedback</button>
+      <div id="feedbackStatus"></div>
+    </form>
+  </div>
+
   <script>
     const TRANSCRIBE_URL = 'https://sttsarvam.onrender.com/transcribe/urls';
     const GEMINI_API_KEY = 'AIzaSyBDHAtCgKffA2YurDUpwkH-Nvr19HJF3DQ';
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
     const CHECK_DB_URL = 'https://teamka.in/z_ash_test/fetch_status.php';
     const SAVE_DB_URL = 'https://teamka.in/z_ash_test/save_qa.php';
+    const SAVE_FEEDBACK_URL = 'https://teamka.in/z_ash_test/save_feedback.php';
 
     const urlInput = document.getElementById('urlInput');
     const urlInfo = document.getElementById('urlInfo');
@@ -322,6 +367,10 @@
     const overall = document.getElementById('overall');
     const scoreCards = document.getElementById('scoreCards');
     const resetBtn = document.getElementById('resetBtn');
+    const feedbackForm = document.getElementById('feedbackForm');
+    const feedbackText = document.getElementById('feedbackText');
+    const feedbackStatus = document.getElementById('feedbackStatus');
+    const submitFeedbackBtn = document.getElementById('submitFeedbackBtn');
 
     // Check for audiolink parameter in URL
     function getUrlParameter(name) {
@@ -346,7 +395,7 @@
       
       if (audiolink) {
         urlInput.value = audiolink;
-        
+        window.audiolink = audiolink;
         let infoHtml = `
           <strong>Auto-detected URL:</strong> ${audiolink}<br>
           <strong>Source:</strong> ${source}
@@ -541,7 +590,7 @@
         console.log('Transcription response:', transcribeData);
         showDebug(transcribeData);
 
-        // Extract transcript from API response structure
+        // Extract transcript from your API response structure
         if (!transcribeData.results || transcribeData.results.length === 0) {
           throw new Error('No transcription results returned');
         }
@@ -835,6 +884,57 @@ Transcript: ${transcript.substring(0, 4000)}`;
         } catch (err) {
             console.error('Error saving to database:', err);
         }
+    }
+
+    // Handle feedback form submission
+    feedbackForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const feedback = feedbackText.value.trim();
+      if (!feedback) {
+        showFeedbackStatus('Please enter some feedback before submitting.', 'error');
+        return;
+      }
+
+      submitFeedbackBtn.disabled = true;
+      submitFeedbackBtn.textContent = 'Submitting...';
+      
+      try {
+        const response = await fetch(SAVE_FEEDBACK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            feedback: feedback,
+            audiolink: window.audiolink
+          })
+        });
+
+        if (response.ok) {
+          showFeedbackStatus('Thank you for your feedback!', 'success');
+          feedbackText.value = '';
+        } else {
+          throw new Error('Failed to submit feedback');
+        }
+      } catch (error) {
+        console.error('Feedback submission error:', error);
+        showFeedbackStatus('Failed to submit feedback. Please try again.', 'error');
+      } finally {
+        submitFeedbackBtn.disabled = false;
+        submitFeedbackBtn.textContent = 'Submit Feedback';
+      }
+    });
+
+    function showFeedbackStatus(message, type) {
+      feedbackStatus.textContent = message;
+      feedbackStatus.className = type === 'success' ? 'success' : 'error';
+      feedbackStatus.style.display = 'block';
+      
+      // Hide the status after 5 seconds
+      setTimeout(() => {
+        feedbackStatus.style.display = 'none';
+      }, 5000);
     }
 
     function renderDetailedAnalysis(detailedAnalysis) {
