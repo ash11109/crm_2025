@@ -317,6 +317,7 @@
 <body>
 
   <h1>Sales Call Analyzer</h1>
+  <div id="audio"></div>
   
   <div class="url-input-container">
     <input type="url" id="urlInput" class="url-input" placeholder="Enter audio file URL here..." />
@@ -356,6 +357,7 @@
     const SAVE_DB_URL = 'https://teamka.in/z_ash_test/save_qa.php';
     const SAVE_FEEDBACK_URL = 'https://teamka.in/z_ash_test/save_feedback.php';
 
+    const audio = document.getElementById('audio');
     const urlInput = document.getElementById('urlInput');
     const urlInfo = document.getElementById('urlInfo');
     const analyzeBtn = document.getElementById('analyzeBtn');
@@ -396,6 +398,10 @@
       if (audiolink) {
         urlInput.value = audiolink;
         window.audiolink = audiolink;
+        audio.innerHTML = `<audio controls="" autoplay="">
+    <source src="${audiolink}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+  </audio>`
         let infoHtml = `
           <strong>Auto-detected URL:</strong> ${audiolink}<br>
           <strong>Source:</strong> ${source}
@@ -619,7 +625,8 @@
         status.textContent = 'Analyzing with AI...';
 
         // Enhanced prompt for detailed analysis across all categories
-        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. For ALL categories, provide specific examples from the transcript with detailed breakdown and keep everything in hinglish, all the callers are from kalam academy trying to sell courses. Return ONLY valid JSON in this exact format:
+        const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. For ALL categories, provide specific examples from the transcript with detailed breakdown and keep everything 
+        in hinglish, hinglish is very important, all the callers are from kalam academy trying to sell courses, remember kalam academy is a place and there is no one named kalam, the transcription might be a little wrong in some places but use your reasoning. Return ONLY valid JSON in this exact format:
 
 {
   "engagement": {
