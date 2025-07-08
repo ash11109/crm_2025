@@ -312,6 +312,37 @@
       border-radius: 4px;
       display: none;
     }
+    
+    /* Progress bar styles */
+    .progress-container {
+      width: 100%;
+      max-width: 600px;
+      height: 20px;
+      background: #e9ecef;
+      border-radius: 10px;
+      margin: 20px 0;
+      overflow: hidden;
+      display: none;
+      position: relative;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #007bff, #00a8ff);
+      border-radius: 10px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    
+    .progress-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      line-height: 20px;
+    }
   </style>
 </head>
 <body>
@@ -327,6 +358,13 @@
   <button id="analyzeBtn" disabled>Analyze</button>
 
   <div id="spinner" class="spinner" style="display: none;"></div>
+  
+  <!-- Progress bar container -->
+  <div class="progress-container" id="progressContainer">
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="progress-text" id="progressText">0%</div>
+  </div>
+  
   <div id="status"></div>
   <div id="errorMessage" class="error" style="display: none;"></div>
   
@@ -362,6 +400,9 @@
     const urlInfo = document.getElementById('urlInfo');
     const analyzeBtn = document.getElementById('analyzeBtn');
     const spinner = document.getElementById('spinner');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
     const status = document.getElementById('status');
     const errorMessage = document.getElementById('errorMessage');
     const debugInfo = document.getElementById('debugInfo');
@@ -373,6 +414,15 @@
     const feedbackText = document.getElementById('feedbackText');
     const feedbackStatus = document.getElementById('feedbackStatus');
     const submitFeedbackBtn = document.getElementById('submitFeedbackBtn');
+
+    // Update progress bar
+    function updateProgress(percent, message = '') {
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `${percent}%`;
+      if (message) {
+        status.textContent = message;
+      }
+    }
 
     // Check for audiolink parameter in URL
     function getUrlParameter(name) {
@@ -467,6 +517,7 @@
       errorMessage.textContent = message;
       errorMessage.style.display = 'block';
       spinner.style.display = 'none';
+      progressContainer.style.display = 'none';
       status.textContent = '';
     }
 
@@ -513,7 +564,8 @@
 
       hideError();
       spinner.style.display = 'block';
-      status.textContent = 'Checking database for existing analysis...';
+      progressContainer.style.display = 'block';
+      updateProgress(5, 'Checking database for existing analysis...');
       results.style.display = 'none';
 
       try {
@@ -539,14 +591,14 @@
         if (parsedResponse === "NOT_FOUND") {
             // No record in DB — proceed with transcription + analysis
             console.log('No record found in DB, proceeding with transcription...');
-            status.textContent = 'No existing analysis found. Starting transcription...';
+            updateProgress(10, 'No existing analysis found. Starting transcription...');
         } else if (parsedResponse === "PENDING") {
             // Record exists but is pending — proceed with transcription + analysis
             console.log('Record is pending, proceeding with transcription...');
-            status.textContent = 'Found pending record. Starting transcription...';
+            updateProgress(10, 'Found pending record. Starting transcription...');
         } else if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
             // We have existing completed data, use it
-            status.textContent = 'Found existing analysis in database!';
+            updateProgress(100, 'Found existing analysis in database!');
             const dbRecord = parsedResponse[0];
             
             const analysisData = {
@@ -558,14 +610,17 @@
                 closing_techniques: parseDetailedAnalysis(dbRecord.Closing_Skill)
             };
             
-            showResults(analysisData);
+            // Simulate progress for existing data case
+            setTimeout(() => {
+              showResults(analysisData);
+            }, 800);
             return;
         } else {
             throw new Error('Unexpected response format from database');
         }
 
         // No existing data, proceed with API calls
-        status.textContent = 'No existing analysis found. Starting transcription...';
+        updateProgress(20, 'Starting transcription...');
         
         // Send URL to transcription service
         const requestBody = {
@@ -591,7 +646,7 @@
           throw new Error(`Server error ${transcribeRes.status}: ${errorText}`);
         }
 
-        status.textContent = 'Processing transcription...';
+        updateProgress(40, 'Processing transcription...');
         const transcribeData = await transcribeRes.json();
         console.log('Transcription response:', transcribeData);
         showDebug(transcribeData);
@@ -622,7 +677,7 @@
           throw new Error('Invalid or empty transcript received');
         }
 
-        status.textContent = 'Analyzing with AI...';
+        updateProgress(60, 'Analyzing with AI...');
 
         // Enhanced prompt for detailed analysis across all categories
         const prompt = `Analyze this sales call transcript and rate the speaker on a scale of 0-20 for each category. For ALL categories, provide specific examples from the transcript with detailed breakdown and keep everything 
@@ -824,6 +879,7 @@ Each detailed_analysis item must have exact quotes from the transcript and provi
 
 Transcript: ${transcript.substring(0, 4000)}`;
 
+        updateProgress(70, 'Processing with Gemini AI...');
         const geminiRes = await fetch(GEMINI_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -836,6 +892,7 @@ Transcript: ${transcript.substring(0, 4000)}`;
           throw new Error(`Gemini API failed: ${geminiRes.status}`);
         }
         
+        updateProgress(85, 'Processing AI response...');
         const geminiJson = await geminiRes.json();
         let content = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text;
         
@@ -848,7 +905,7 @@ Transcript: ${transcript.substring(0, 4000)}`;
         const analysis = JSON.parse(content);
 
         // Save to database
-        status.textContent = 'Saving results to database...';
+        updateProgress(95, 'Saving results to database...');
         await saveToDatabase(audioUrl, transcript, analysis);
 
         showResults(analysis);
@@ -969,6 +1026,7 @@ Transcript: ${transcript.substring(0, 4000)}`;
 
     function showResults(data) {
       spinner.style.display = 'none';
+      progressContainer.style.display = 'none';
       status.textContent = '';
       results.style.display = 'block';
       analyzeBtn.textContent = 'Analyze';
@@ -1046,6 +1104,7 @@ Transcript: ${transcript.substring(0, 4000)}`;
       }
       
       spinner.style.display = 'none';
+      progressContainer.style.display = 'none';
       status.textContent = '';
       results.style.display = 'none';
       scoreCards.innerHTML = '';
